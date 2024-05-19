@@ -23,7 +23,7 @@ st.set_page_config(page_title="Autopy", page_icon=":sparkles:", layout="centered
 st.markdown("""
     <style>
     .main {
-        background-color: white;
+        background-color: grey;
         font-family: 'Arial', sans-serif;
         padding: 2rem;
     }
