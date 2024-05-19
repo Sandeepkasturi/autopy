@@ -1,12 +1,11 @@
 import streamlit as st
 import subprocess
 import os
-from pathlib import Path
 from streamlit_lottie import st_lottie
-import sys
-# Utility function to load Lottie animations from URL
 import requests
+import sys
 
+# Utility function to load Lottie animations from URL
 def load_lottieurl(url: str):
     r = requests.get(url)
     if r.status_code != 200:
@@ -23,7 +22,7 @@ st.set_page_config(page_title="Autopy", page_icon=":sparkles:", layout="centered
 st.markdown("""
     <style>
     .main {
-        background-color: pale green;
+        background-color: ;
         font-family: 'Arial', sans-serif;
         padding: 2rem;
     }
@@ -54,12 +53,22 @@ st.markdown("""
     .button-container button:hover {
         background-color: #574bff;
     }
+    .output {
+        margin-top: 2rem;
+        background-color: #e9ecef;
+        padding: 1rem;
+        border-radius: 5px;
+    }
+    .error {
+        color: red;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # Title and description
 st.markdown("<h1>Python to Executable Converter</h1>", unsafe_allow_html=True)
-st.markdown("<p class='description'>Convert your Python scripts (.py) to standalone executables (.exe) with ease using auto-py-to-exe. Developed by SKAV TECH, A company focuses on Building Practial AI projects</p>", unsafe_allow_html=True)
+st.markdown("Developed by SKAV TECH a Company focused on Building Practial AI Projects.")
+st.markdown("<p class='description'>Convert your Python scripts (.py) to standalone executables (.exe) with ease using auto-py-to-exe. Developed by SKAV TECH, A company focuses on Building Practical AI projects</p>", unsafe_allow_html=True)
 
 # Instructions for users
 st.markdown("""
@@ -72,18 +81,21 @@ st.markdown("""
 if st.button("Start Conversion Process"):
     with st.spinner("Setting up the environment..."):
         # Install auto-py-to-exe
-        subprocess.run([sys.executable, "-m", "pip", "install", "auto-py-to-exe"], capture_output=True, text=True)
-        st.success("auto-py-to-exe installed successfully!")
+        result = subprocess.run([sys.executable, "-m", "pip", "install", "auto-py-to-exe"], capture_output=True, text=True)
+        if result.returncode == 0:
+            st.success("auto-py-to-exe installed successfully!")
+            # Provide instructions to the user
+            st.write("The `auto-py-to-exe` GUI will open automatically. Follow these steps:")
+            st.write("1. In the `Script Location` field, select the Python file you want to convert.")
+            st.write("2. Customize the settings as needed.")
+            st.write("3. Click on `Convert .py to .exe` to start the conversion.")
+            st.write("4. Once the conversion is done, download your executable from the `dist` directory.")
 
-        # Provide instructions to the user
-        st.write("The `auto-py-to-exe` GUI will open automatically. Follow these steps:")
-        st.write("1. In the `Script Location` field, select the Python file you want to convert.")
-        st.write("2. Customize the settings as needed.")
-        st.write("3. Click on `Convert .py to .exe` to start the conversion.")
-        st.write("4. Once the conversion is done, download your executable from the `dist` directory.")
-
-        # Open auto-py-to-exe GUI
-        subprocess.Popen(["auto-py-to-exe"], shell=True)
+            # Open auto-py-to-exe GUI
+            subprocess.Popen(["auto-py-to-exe"], shell=True)
+        else:
+            st.error("Failed to install auto-py-to-exe. Please try again.")
+            st.error(result.stderr)
 
 # Clean up temporary files (optional)
 if st.button("Clean up temporary files"):
@@ -97,3 +109,21 @@ if st.button("Clean up temporary files"):
         st.success("Temporary files cleaned up successfully.")
     else:
         st.info("No temporary files to clean up.")
+
+# Shell command input and execution
+st.markdown("""Use the following commands, if at all the Page broke,
+1. pip install auto-py-to-exe
+2. auto-py-to-exe.
+Good to go now ..""")
+st.markdown("<h2>Command Shell</h2>", unsafe_allow_html=True)
+command = st.text_input("Enter a shell command:")
+
+if st.button("Execute"):
+    if command:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        if result.returncode == 0:
+            st.markdown("<div class='output'><pre>{}</pre></div>".format(result.stdout), unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='output error'><pre>{}</pre></div>".format(result.stderr), unsafe_allow_html=True)
+    else:
+        st.warning("Please enter a command to execute.")
