@@ -1,9 +1,10 @@
-import streamlit as st
-import subprocess
 import os
+import subprocess
+import stat
+import streamlit as st
+import sys
 from streamlit_lottie import st_lottie
 import requests
-import sys
 
 # Utility function to load Lottie animations from URL
 def load_lottieurl(url: str):
@@ -12,11 +13,21 @@ def load_lottieurl(url: str):
         return None
     return r.json()
 
-# Load an animation for the header
-lottie_animation = load_lottieurl("https://assets2.lottiefiles.com/packages/lf20_49rdyysj.json")
+# Attempt to change permissions for the site-packages directory
+def set_permissions(directory):
+    try:
+        # Change the permissions to allow writing (rwxr-xr-x)
+        os.chmod(directory, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
+        return True
+    except Exception as e:
+        st.error(f"Failed to change permissions: {e}")
+        return False
 
 # Set page configuration
 st.set_page_config(page_title="Autopy", page_icon=":sparkles:", layout="centered")
+
+# Load an animation for the header
+lottie_animation = load_lottieurl("https://assets2.lottiefiles.com/packages/lf20_49rdyysj.json")
 
 # Custom CSS for styling
 st.markdown("""
@@ -67,7 +78,7 @@ st.markdown("""
 
 # Title and description
 st.markdown("<h1>Python to Executable Converter</h1>", unsafe_allow_html=True)
-st.markdown("Developed by SKAV TECH a Company focused on Building Practial AI Projects.")
+st.markdown("Developed by SKAV TECH a Company focused on Building Practical AI Projects.")
 st.markdown("<p class='description'>Convert your Python scripts (.py) to standalone executables (.exe) with ease using auto-py-to-exe. Developed by SKAV TECH, A company focuses on Building Practical AI projects</p>", unsafe_allow_html=True)
 
 # Instructions for users
@@ -80,22 +91,27 @@ st.markdown("""
 # Button to start the installation and open auto-py-to-exe
 if st.button("Start Conversion Process"):
     with st.spinner("Setting up the environment..."):
-        # Install auto-py-to-exe
-        result = subprocess.run([sys.executable, "-m", "pip", "install", "auto-py-to-exe"], capture_output=True, text=True)
-        if result.returncode == 0:
-            st.success("auto-py-to-exe installed successfully!")
-            # Provide instructions to the user
-            st.write("The `auto-py-to-exe` GUI will open automatically. Follow these steps:")
-            st.write("1. In the `Script Location` field, select the Python file you want to convert.")
-            st.write("2. Customize the settings as needed.")
-            st.write("3. Click on `Convert .py to .exe` to start the conversion.")
-            st.write("4. Once the conversion is done, download your executable from the `dist` directory.")
+        # Attempt to change permissions
+        site_packages_dir = os.path.dirname(sys.executable) + "/../lib/python3.11/site-packages"
+        if set_permissions(site_packages_dir):
+            # Install auto-py-to-exe
+            result = subprocess.run([sys.executable, "-m", "pip", "install", "auto-py-to-exe"], capture_output=True, text=True)
+            if result.returncode == 0:
+                st.success("auto-py-to-exe installed successfully!")
+                # Provide instructions to the user
+                st.write("The `auto-py-to-exe` GUI will open automatically. Follow these steps:")
+                st.write("1. In the `Script Location` field, select the Python file you want to convert.")
+                st.write("2. Customize the settings as needed.")
+                st.write("3. Click on `Convert .py to .exe` to start the conversion.")
+                st.write("4. Once the conversion is done, download your executable from the `dist` directory.")
 
-            # Open auto-py-to-exe GUI
-            subprocess.Popen(["auto-py-to-exe"], shell=True)
+                # Open auto-py-to-exe GUI
+                subprocess.Popen(["auto-py-to-exe"], shell=True)
+            else:
+                st.error("Failed to install auto-py-to-exe. Please try again.")
+                st.error(result.stderr)
         else:
-            st.error("Failed to install auto-py-to-exe. Please try again.")
-            st.error(result.stderr)
+            st.error("Unable to change directory permissions.")
 
 # Clean up temporary files (optional)
 if st.button("Clean up temporary files"):
