@@ -1,27 +1,41 @@
-import os
-import subprocess
-import stat
 import streamlit as st
+import subprocess
 import sys
-from streamlit_lottie import st_lottie
-import requests
+import os
+import zipfile
+import tempfile
 
 # Utility function to load Lottie animations from URL
 def load_lottieurl(url: str):
+    import requests
     r = requests.get(url)
     if r.status_code != 200:
         return None
     return r.json()
 
-# Attempt to change permissions for the site-packages directory
-def set_permissions(directory):
-    try:
-        # Change the permissions to allow writing (rwxr-xr-x)
-        os.chmod(directory, stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
-        return True
-    except Exception as e:
-        st.error(f"Failed to change permissions: {e}")
-        return False
+# Function to save uploaded files to a temporary directory
+def save_uploaded_files(uploaded_file):
+    temp_dir = tempfile.mkdtemp()
+    file_path = os.path.join(temp_dir, uploaded_file.name)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    return file_path
+
+# Function to extract a zip file
+def extract_zip(zip_path, extract_to):
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+
+# Function to run auto-py-to-exe
+def run_auto_py_to_exe(executable_path):
+    # Attempt to run auto-py-to-exe
+    result = subprocess.run([sys.executable, executable_path], shell=True, capture_output=True, text=True)
+    if result.returncode == 0:
+        st.success("auto-py-to-exe executed successfully!")
+        st.write("Follow the instructions in the auto-py-to-exe GUI to complete your conversion.")
+    else:
+        st.error("Failed to execute auto-py-to-exe.")
+        st.error(result.stderr)
 
 # Set page configuration
 st.set_page_config(page_title="Autopy", page_icon=":sparkles:", layout="centered")
@@ -33,12 +47,13 @@ lottie_animation = load_lottieurl("https://assets2.lottiefiles.com/packages/lf20
 st.markdown("""
     <style>
     .main {
-        background-color: ;
+        background-color: #121212;
+        color: #e0e0e0;
         font-family: 'Arial', sans-serif;
         padding: 2rem;
     }
     h1 {
-        color: #6c63ff;
+        color: #bb86fc;
         text-align: center;
         font-weight: bold;
     }
@@ -53,8 +68,8 @@ st.markdown("""
         margin-top: 2rem;
     }
     .button-container button {
-        background-color: #6c63ff;
-        color: white;
+        background-color: #bb86fc;
+        color: #121212;
         padding: 0.5rem 1rem;
         font-size: 1rem;
         border: none;
@@ -62,16 +77,23 @@ st.markdown("""
         cursor: pointer;
     }
     .button-container button:hover {
-        background-color: #574bff;
+        background-color: #a03dbe;
     }
     .output {
         margin-top: 2rem;
-        background-color: #e9ecef;
+        background-color: #1f1f1f;
+        color: #e0e0e0;
         padding: 1rem;
         border-radius: 5px;
     }
     .error {
-        color: red;
+        color: #cf6679;
+    }
+    .info {
+        color: #03dac6;
+    }
+    .warning {
+        color: #ffab00;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -83,63 +105,33 @@ st.markdown("<p class='description'>Convert your Python scripts (.py) to standal
 
 # Instructions for users
 st.markdown("""
-1. Click the button below to install `auto-py-to-exe`.
-2. Follow the instructions in the auto-py-to-exe GUI to complete your conversion.
-3. Once the conversion is done, download your executable from the `dist` directory.
+1. Install `auto-py-to-exe` on your local machine.
+2. Upload the necessary files using the file uploader below.
+3. Type `auto-py-to-exe` in the command shell and execute.
 """)
 
-# Button to start the installation and open auto-py-to-exe
-if st.button("Start Conversion Process"):
-    with st.spinner("Setting up the environment..."):
-        # Attempt to change permissions
-        site_packages_dir = os.path.dirname(sys.executable) + "/../lib/python3.11/site-packages"
-        if set_permissions(site_packages_dir):
-            # Install auto-py-to-exe
-            result = subprocess.run([sys.executable, "-m", "pip", "install", "auto-py-to-exe"], capture_output=True, text=True)
-            if result.returncode == 0:
-                st.success("auto-py-to-exe installed successfully!")
-                # Provide instructions to the user
-                st.write("The `auto-py-to-exe` GUI will open automatically. Follow these steps:")
-                st.write("1. In the `Script Location` field, select the Python file you want to convert.")
-                st.write("2. Customize the settings as needed.")
-                st.write("3. Click on `Convert .py to .exe` to start the conversion.")
-                st.write("4. Once the conversion is done, download your executable from the `dist` directory.")
+# File uploader for user to upload auto-py-to-exe files
+uploaded_file = st.file_uploader("Upload auto-py-to-exe zip file", type=["zip"])
 
-                # Open auto-py-to-exe GUI
-                subprocess.Popen(["auto-py-to-exe"], shell=True)
-            else:
-                st.error("Failed to install auto-py-to-exe. Please try again.")
-                st.error(result.stderr)
+if uploaded_file is not None:
+    # Save and extract the uploaded zip file
+    zip_path = save_uploaded_files(uploaded_file)
+    extract_to_dir = tempfile.mkdtemp()
+    extract_zip(zip_path, extract_to_dir)
+
+    st.success("Files uploaded and extracted successfully!")
+
+    # Provide the path to the auto-py-to-exe executable
+    auto_py_to_exe_path = os.path.join(extract_to_dir, 'auto-py-to-exe', 'auto_py_to_exe.py')  # Update this path as needed
+
+    # Shell command input and execution
+    st.markdown("<h2>Command Shell</h2>", unsafe_allow_html=True)
+    command = st.text_input("Enter a shell command:")
+
+    if st.button("Execute"):
+        if command.strip().lower() == "auto-py-to-exe":
+            run_auto_py_to_exe(auto_py_to_exe_path)
         else:
-            st.error("Unable to change directory permissions.")
-
-# Clean up temporary files (optional)
-if st.button("Clean up temporary files"):
-    temp_dir = "temp"
-    if os.path.exists(temp_dir):
-        for file_name in os.listdir(temp_dir):
-            file_path = os.path.join(temp_dir, file_name)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-        os.rmdir(temp_dir)
-        st.success("Temporary files cleaned up successfully.")
-    else:
-        st.info("No temporary files to clean up.")
-
-# Shell command input and execution
-st.markdown("""Use the following commands, if at all the Page broke,
-1. pip install auto-py-to-exe
-2. auto-py-to-exe.
-Good to go now ..""")
-st.markdown("<h2>Command Shell</h2>", unsafe_allow_html=True)
-command = st.text_input("Enter a shell command:")
-
-if st.button("Execute"):
-    if command:
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        if result.returncode == 0:
-            st.markdown("<div class='output'><pre>{}</pre></div>".format(result.stdout), unsafe_allow_html=True)
-        else:
-            st.markdown("<div class='output error'><pre>{}</pre></div>".format(result.stderr), unsafe_allow_html=True)
-    else:
-        st.warning("Please enter a command to execute.")
+            st.warning("Please enter a valid command to execute.")
+else:
+    st.info("Please upload the `auto-py-to-exe` package to proceed.")
